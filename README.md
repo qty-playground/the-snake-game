@@ -2,7 +2,7 @@
 
 一個用 Phaser 3 開發的經典貪食蛇遊戲。
 
-![貪食蛇遊戲截圖](https://via.placeholder.com/600x400.png?text=Snake+Game+Screenshot)
+![貪食蛇遊戲截圖](./docs/v1_game_starting.png)
 
 ## 📝 專案簡介
 
@@ -49,8 +49,7 @@ MIT License
 
 ## 👨‍💻 作者
 
-Your Name
-
+Chan Ching-Yi
 ---
 
 🎮 **享受遊戲！** 🎮
