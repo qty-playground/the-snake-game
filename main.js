@@ -8,7 +8,8 @@ const COLORS = {
   SNAKE_HEAD: 0x00ff00, // 綠色蛇頭
   SNAKE_BODY: 0x008800, // 深綠色蛇身
   GRID: 0x333333,     // 網格顏色
-  FOOD: 0xff0000      // 紅色食物
+  FOOD: 0xff0000,      // 紅色食物
+  GAME_OVER: 0xff0000  // 紅色結束提示
 };
 
 // 方向設定
@@ -62,6 +63,9 @@ class SnakeScene extends Phaser.Scene {
         x: 0,
         y: 0
       };
+
+      // 遊戲狀態
+      this.gameOver = false;
     }
   
     preload() {
@@ -102,6 +106,11 @@ class SnakeScene extends Phaser.Scene {
     }
   
     update(time, delta) {
+      // 如果遊戲結束，不執行後續更新邏輯
+      if (this.gameOver) {
+        return;
+      }
+      
       // 重置方向變更標記 (為下一幀做準備)
       this.directionChanged = false;
       
@@ -238,7 +247,7 @@ class SnakeScene extends Phaser.Scene {
       // 可以在這裡添加額外的視覺反饋，比如箭頭指示或蛇頭旋轉等
     }
     
-    // 新增：移動蛇的方法
+    // 修改：移動蛇的方法，加入碰撞檢測
     moveSnake() {
       // 更新當前方向為下一步方向
       this.direction = this.nextDirection;
@@ -259,8 +268,77 @@ class SnakeScene extends Phaser.Scene {
         this.snake.pop();
       }
       
+      // 檢查是否發生碰撞 (邊界或自身)
+      if (this.checkCollision()) {
+        this.gameOver = true;
+        this.showGameOver();
+        return;
+      }
+      
       // 重新繪製蛇
       this.drawSnake();
+    }
+    
+    // 新增：檢查碰撞 (邊界和自身)
+    checkCollision() {
+      const head = this.snake[0];
+      
+      // 檢查是否撞到邊界
+      if (head.x < 0 || head.x >= this.gridWidth || 
+          head.y < 0 || head.y >= this.gridHeight) {
+        console.log('撞到邊界！遊戲結束');
+        return true;
+      }
+      
+      // 檢查是否撞到自己的身體 (從第二節開始檢查)
+      // 注意：蛇身長度至少要 5 節才有可能撞到自己
+      for (let i = 1; i < this.snake.length; i++) {
+        if (head.x === this.snake[i].x && head.y === this.snake[i].y) {
+          console.log('撞到自己！遊戲結束');
+          return true;
+        }
+      }
+      
+      // 沒有發生碰撞
+      return false;
+    }
+    
+    // 新增：顯示遊戲結束訊息
+    showGameOver() {
+      // 添加半透明黑色背景
+      const overlay = this.add.rectangle(
+        this.gridWidth * this.cellSize / 2,
+        this.gridHeight * this.cellSize / 2,
+        this.gridWidth * this.cellSize,
+        this.gridHeight * this.cellSize,
+        0x000000,
+        0.7
+      );
+      
+      // 添加遊戲結束文字
+      const gameOverText = this.add.text(
+        this.gridWidth * this.cellSize / 2,
+        this.gridHeight * this.cellSize / 2 - 50,
+        '遊戲結束',
+        {
+          fontFamily: 'Arial',
+          fontSize: '48px',
+          color: '#ff0000',
+          fontWeight: 'bold'
+        }
+      ).setOrigin(0.5);
+      
+      // 簡易指示重新開始的文字 (第 8 步會完善此功能)
+      const restartText = this.add.text(
+        this.gridWidth * this.cellSize / 2,
+        this.gridHeight * this.cellSize / 2 + 20,
+        '請重新整理頁面以再次遊戲',
+        {
+          fontFamily: 'Arial',
+          fontSize: '24px',
+          color: '#ffffff'
+        }
+      ).setOrigin(0.5);
     }
     
     // 新增：生成食物的方法
