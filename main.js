@@ -26,6 +26,13 @@ const OPPOSITE_DIRECTIONS = {
   RIGHT: 'LEFT'
 };
 
+// 遊戲設定
+const GAME_SETTINGS = {
+  MOVE_INTERVAL: 350, // 蛇移動的時間間隔 (毫秒)
+  START_SPEED: 350,   // 初始移動速度 (毫秒)
+  MIN_SPEED: 150       // 最快速度限制 (毫秒)
+};
+
 class SnakeScene extends Phaser.Scene {
     constructor() {
       super({ key: 'SnakeScene' });
@@ -39,6 +46,10 @@ class SnakeScene extends Phaser.Scene {
       this.direction = DIRECTIONS.RIGHT;
       this.nextDirection = DIRECTIONS.RIGHT; // 新增：下一步的方向
       this.snakeBodyGroup = null; // 用於存放蛇身體的 Group
+      
+      // 移動計時相關
+      this.moveTime = 0;         // 下一次移動的時間計數
+      this.moveInterval = GAME_SETTINGS.MOVE_INTERVAL; // 移動間隔 (毫秒)
       
       // 鍵盤控制
       this.cursors = null;
@@ -74,6 +85,9 @@ class SnakeScene extends Phaser.Scene {
         fontSize: '16px',
         color: '#cccccc'
       });
+      
+      // 重設移動計時器
+      this.moveTime = 0;
     }
   
     update(time, delta) {
@@ -82,6 +96,13 @@ class SnakeScene extends Phaser.Scene {
       
       // 檢查鍵盤輸入
       this.handleKeyboardInput();
+      
+      // 移動蛇 (基於時間間隔)
+      if (time >= this.moveTime) {
+        this.moveSnake();
+        // 設定下一次移動的時間
+        this.moveTime = time + this.moveInterval;
+      }
     }
     
     // 繪製網格背景的方法
@@ -204,6 +225,29 @@ class SnakeScene extends Phaser.Scene {
     showDirectionChange(direction) {
       console.log(`方向改變: ${direction}`);
       // 可以在這裡添加額外的視覺反饋，比如箭頭指示或蛇頭旋轉等
+    }
+    
+    // 新增：移動蛇的方法
+    moveSnake() {
+      // 更新當前方向為下一步方向
+      this.direction = this.nextDirection;
+      
+      // 計算蛇頭的新位置
+      const head = { ...this.snake[0] };
+      head.x += this.direction.x;
+      head.y += this.direction.y;
+      
+      // 將新的頭部添加到蛇的前面
+      this.snake.unshift(head);
+      
+      // 移除尾巴 (保持長度不變)
+      this.snake.pop();
+      
+      // 重新繪製蛇
+      this.drawSnake();
+      
+      // 顯示當前蛇頭位置的訊息 (可以在之後移除)
+      console.log(`蛇頭位置: (${head.x}, ${head.y})`);
     }
   }
   
