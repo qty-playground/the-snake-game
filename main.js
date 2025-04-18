@@ -32,7 +32,8 @@ const OPPOSITE_DIRECTIONS = {
 const GAME_SETTINGS = {
   MOVE_INTERVAL: 150, // 蛇移動的時間間隔 (毫秒)
   START_SPEED: 150,   // 初始移動速度 (毫秒)
-  MIN_SPEED: 70       // 最快速度限制 (毫秒)
+  MIN_SPEED: 70,       // 最快速度限制 (毫秒)
+  POINTS_PER_FOOD: 1  // 每個食物的分數
 };
 
 class SnakeScene extends Phaser.Scene {
@@ -66,6 +67,10 @@ class SnakeScene extends Phaser.Scene {
 
       // 遊戲狀態
       this.gameOver = false;
+      
+      // 分數相關
+      this.score = 0;
+      this.scoreText = null;
     }
   
     preload() {
@@ -100,6 +105,9 @@ class SnakeScene extends Phaser.Scene {
         fontSize: '16px',
         color: '#cccccc'
       });
+      
+      // 初始化分數顯示
+      this.initScoreDisplay();
       
       // 重設移動計時器
       this.moveTime = 0;
@@ -318,7 +326,7 @@ class SnakeScene extends Phaser.Scene {
       // 添加遊戲結束文字
       const gameOverText = this.add.text(
         this.gridWidth * this.cellSize / 2,
-        this.gridHeight * this.cellSize / 2 - 50,
+        this.gridHeight * this.cellSize / 2 - 80,
         '遊戲結束',
         {
           fontFamily: 'Arial',
@@ -328,10 +336,22 @@ class SnakeScene extends Phaser.Scene {
         }
       ).setOrigin(0.5);
       
+      // 顯示最終分數
+      const finalScoreText = this.add.text(
+        this.gridWidth * this.cellSize / 2,
+        this.gridHeight * this.cellSize / 2 - 20,
+        `最終分數: ${this.score}`,
+        {
+          fontFamily: 'Arial',
+          fontSize: '32px',
+          color: '#ffffff'
+        }
+      ).setOrigin(0.5);
+      
       // 簡易指示重新開始的文字 (第 8 步會完善此功能)
       const restartText = this.add.text(
         this.gridWidth * this.cellSize / 2,
-        this.gridHeight * this.cellSize / 2 + 20,
+        this.gridHeight * this.cellSize / 2 + 50,
         '請重新整理頁面以再次遊戲',
         {
           fontFamily: 'Arial',
@@ -386,6 +406,9 @@ class SnakeScene extends Phaser.Scene {
       if (head.x === this.foodPosition.x && head.y === this.foodPosition.y) {
         console.log('吃到食物了!');
         
+        // 更新分數
+        this.updateScore(GAME_SETTINGS.POINTS_PER_FOOD);
+        
         // 生成新的食物
         this.generateFood();
         
@@ -395,6 +418,61 @@ class SnakeScene extends Phaser.Scene {
       
       // 沒吃到食物
       return false;
+    }
+    
+    // 新增：初始化分數顯示
+    initScoreDisplay() {
+      // 遊戲標題的位置在左上角，我們把分數放在右上角
+      this.scoreText = this.add.text(
+        this.gridWidth * this.cellSize - 10, 
+        10, 
+        `分數: ${this.score}`, 
+        {
+          fontFamily: 'Arial',
+          fontSize: '20px',
+          color: '#ffffff',
+          align: 'right'
+        }
+      ).setOrigin(1, 0); // 右對齊
+    }
+    
+    // 新增：更新分數顯示
+    updateScore(points) {
+      this.score += points;
+      this.scoreText.setText(`分數: ${this.score}`);
+      
+      // 在蛇頭位置顯示得分動畫 (可選)
+      this.showPointsAnimation(points);
+    }
+    
+    // 新增：顯示得分動畫 (可選的視覺效果)
+    showPointsAnimation(points) {
+      if (points <= 0) return;
+      
+      // 獲取蛇頭位置
+      const head = this.snake[0];
+      const x = head.x * this.cellSize + this.cellSize / 2;
+      const y = head.y * this.cellSize;
+      
+      // 創建一個浮動的分數文字
+      const pointsText = this.add.text(x, y, `+${points}`, {
+        fontFamily: 'Arial',
+        fontSize: '16px',
+        color: '#ffff00',
+        fontWeight: 'bold'
+      }).setOrigin(0.5, 0.5);
+      
+      // 添加一個簡單的動畫效果
+      this.tweens.add({
+        targets: pointsText,
+        y: y - 30,        // 向上飄動
+        alpha: 0,         // 漸漸消失
+        duration: 1000,   // 動畫持續時間
+        ease: 'Power1',
+        onComplete: () => {
+          pointsText.destroy(); // 動畫結束後移除文字
+        }
+      });
     }
   }
   
