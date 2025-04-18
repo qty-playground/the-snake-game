@@ -36,6 +36,22 @@ const GAME_SETTINGS = {
   POINTS_PER_FOOD: 1  // 每個食物的分數
 };
 
+// 假名資料庫
+const HIRAGANA_DATA = {
+  A_GYOU: [
+    { hiragana: 'あ', romaji: 'a', sound: 'a.mp3' },
+    { hiragana: 'い', romaji: 'i', sound: 'i.mp3' },
+    { hiragana: 'う', romaji: 'u', sound: 'u.mp3' },
+    { hiragana: 'え', romaji: 'e', sound: 'e.mp3' },
+    { hiragana: 'お', romaji: 'o', sound: 'o.mp3' },
+  ],
+  // 為未來擴展準備
+  K_GYOU: [
+    { hiragana: 'か', romaji: 'ka', sound: 'ka.mp3' },
+    // ...
+  ]
+};
+
 class SnakeScene extends Phaser.Scene {
     constructor() {
       super({ key: 'SnakeScene' });
@@ -83,7 +99,11 @@ class SnakeScene extends Phaser.Scene {
     }
   
     preload() {
-      // 載入資源位置（目前不使用）
+      // TODO: Add sound files
+      // 載入假名發音
+      // HIRAGANA_DATA.A_GYOU.forEach(hiraganaObj => {
+      //   this.load.audio(hiraganaObj.romaji, `assets/sounds/${hiraganaObj.sound}`);
+      // });
     }
   
     create() {
@@ -484,13 +504,21 @@ class SnakeScene extends Phaser.Scene {
       
       // 保存食物位置
       this.foodPosition = { x, y };
+
+      // 隨機選擇一個假名
+      const randomIndex = Phaser.Math.Between(0, HIRAGANA_DATA.A_GYOU.length - 1);
+      const hiragana = HIRAGANA_DATA.A_GYOU[randomIndex].hiragana;
       
-      // 創建食物圖形
+      // 創建食物文字
       const foodX = x * this.cellSize + this.cellSize / 2;
       const foodY = y * this.cellSize + this.cellSize / 2;
-      this.food = this.add.circle(foodX, foodY, this.cellSize / 2 - 2, COLORS.FOOD);
+      this.food = this.add.text(foodX, foodY, hiragana, {
+        fontFamily: 'Arial',
+        fontSize: '20px',
+        color: '#ff0000'
+      }).setOrigin(0.5);
       
-      console.log(`生成食物於: (${x}, ${y})`);
+      console.log(`生成食物於: (${x}, ${y}), 假名: ${hiragana}`);
     }
     
     // 新增：檢查蛇頭是否吃到食物
