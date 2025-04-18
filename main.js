@@ -7,7 +7,8 @@ const GRID_HEIGHT = 20;
 const COLORS = {
   SNAKE_HEAD: 0x00ff00, // 綠色蛇頭
   SNAKE_BODY: 0x008800, // 深綠色蛇身
-  GRID: 0x333333      // 網格顏色
+  GRID: 0x333333,     // 網格顏色
+  FOOD: 0xff0000      // 紅色食物
 };
 
 // 方向設定
@@ -28,9 +29,9 @@ const OPPOSITE_DIRECTIONS = {
 
 // 遊戲設定
 const GAME_SETTINGS = {
-  MOVE_INTERVAL: 350, // 蛇移動的時間間隔 (毫秒)
-  START_SPEED: 350,   // 初始移動速度 (毫秒)
-  MIN_SPEED: 150       // 最快速度限制 (毫秒)
+  MOVE_INTERVAL: 150, // 蛇移動的時間間隔 (毫秒)
+  START_SPEED: 150,   // 初始移動速度 (毫秒)
+  MIN_SPEED: 70       // 最快速度限制 (毫秒)
 };
 
 class SnakeScene extends Phaser.Scene {
@@ -54,6 +55,13 @@ class SnakeScene extends Phaser.Scene {
       // 鍵盤控制
       this.cursors = null;
       this.directionChanged = false; // 防止一個更新週期內多次改變方向
+      
+      // 食物相關
+      this.food = null;       // 食物的圖形物件
+      this.foodPosition = {   // 食物的位置
+        x: 0,
+        y: 0
+      };
     }
   
     preload() {
@@ -72,6 +80,9 @@ class SnakeScene extends Phaser.Scene {
       
       // 設定鍵盤控制
       this.setupKeyboardControls();
+      
+      // 生成第一個食物
+      this.generateFood();
       
       this.add.text(10, 10, '🐍 貪食蛇遊戲', {
         fontFamily: 'Arial',
@@ -240,14 +251,72 @@ class SnakeScene extends Phaser.Scene {
       // 將新的頭部添加到蛇的前面
       this.snake.unshift(head);
       
-      // 移除尾巴 (保持長度不變)
-      this.snake.pop();
+      // 檢查是否吃到食物
+      const ate = this.checkFoodCollision();
+      
+      // 如果沒有吃到食物，移除尾巴 (保持長度不變)
+      if (!ate) {
+        this.snake.pop();
+      }
       
       // 重新繪製蛇
       this.drawSnake();
+    }
+    
+    // 新增：生成食物的方法
+    generateFood() {
+      // 如果之前有食物，先移除
+      if (this.food) {
+        this.food.destroy();
+      }
       
-      // 顯示當前蛇頭位置的訊息 (可以在之後移除)
-      console.log(`蛇頭位置: (${head.x}, ${head.y})`);
+      // 找一個沒有蛇的位置放食物
+      let validPosition = false;
+      let x, y;
+      
+      while (!validPosition) {
+        // 隨機生成座標
+        x = Phaser.Math.Between(0, this.gridWidth - 1);
+        y = Phaser.Math.Between(0, this.gridHeight - 1);
+        
+        // 確保這個位置沒有蛇的身體
+        validPosition = true;
+        for (const segment of this.snake) {
+          if (segment.x === x && segment.y === y) {
+            validPosition = false;
+            break;
+          }
+        }
+      }
+      
+      // 保存食物位置
+      this.foodPosition = { x, y };
+      
+      // 創建食物圖形
+      const foodX = x * this.cellSize + this.cellSize / 2;
+      const foodY = y * this.cellSize + this.cellSize / 2;
+      this.food = this.add.circle(foodX, foodY, this.cellSize / 2 - 2, COLORS.FOOD);
+      
+      console.log(`生成食物於: (${x}, ${y})`);
+    }
+    
+    // 新增：檢查蛇頭是否吃到食物
+    checkFoodCollision() {
+      const head = this.snake[0];
+      
+      // 檢查蛇頭是否與食物位置重疊
+      if (head.x === this.foodPosition.x && head.y === this.foodPosition.y) {
+        console.log('吃到食物了!');
+        
+        // 生成新的食物
+        this.generateFood();
+        
+        // 返回 true 表示吃到了食物 (蛇身會變長)
+        return true;
+      }
+      
+      // 沒吃到食物
+      return false;
     }
   }
   
