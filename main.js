@@ -75,13 +75,9 @@ class SnakeScene extends Phaser.Scene {
       this.directionChanged = false; // 防止一個更新週期內多次改變方向
       
       // 食物相關
-      this.food = null;       // 食物的圖形物件
-      this.foodPosition = {   // 食物的位置
-        x: 0,
-        y: 0
-      };
-      this.currentFoodHiragana = null; // 當前食物顯示的假名
-      this.currentFoodRomaji = null;   // 當前食物的羅馬字
+      this.foodGroup = null;     // 食物群組
+      this.foodItems = [];       // 儲存所有食物的陣列
+      this.foodCount = 3;        // 同時顯示的食物數量
       
       // 題目相關
       this.currentQuestion = null;     // 當前題目物件
@@ -134,7 +130,7 @@ class SnakeScene extends Phaser.Scene {
       // 初始化題目顯示區域
       this.initQuestionDisplay();
       
-      // 生成第一個食物
+      // 生成食物
       this.generateFood();
       
       // 設定新的題目
@@ -479,8 +475,8 @@ class SnakeScene extends Phaser.Scene {
       if (this.snakeBodyGroup) {
         this.snakeBodyGroup.clear(true, true);
       }
-      if (this.food) {
-        this.food.destroy();
+      if (this.foodGroup) {
+        this.foodGroup.clear(true, true);
       }
       
       // 重新創建蛇和食物
@@ -495,37 +491,43 @@ class SnakeScene extends Phaser.Scene {
     checkFoodCollision() {
       const head = this.snake[0];
       
-      // 檢查蛇頭是否與食物位置重疊
-      if (head.x === this.foodPosition.x && head.y === this.foodPosition.y) {
-        console.log('吃到食物了!');
-        
-        // 檢查是否與當前題目匹配
-        const isCorrect = this.currentQuestion && 
-                          this.currentFoodHiragana === this.currentQuestion.hiragana;
-                          
-        console.log(`答案是否正確: ${isCorrect}, 題目: ${this.currentQuestion.hiragana}, 食物: ${this.currentFoodHiragana}`);
-        
-        // 更新分數 (正確答案得分，錯誤答案不得分)
-        if (isCorrect) {
-          this.updateScore(GAME_SETTINGS.POINTS_PER_FOOD);
-          this.showCorrectFeedback();
-        } else {
-          this.showWrongFeedback();
+      let ate = false;
+      this.foodItems.forEach((food, index) => {
+        if (head.x === food.position.x && head.y === food.position.y) {
+          console.log('吃到食物了!');
+          
+          // 檢查是否與當前題目匹配
+          const isCorrect = this.currentQuestion && 
+                            food.hiragana === this.currentQuestion.hiragana;
+                            
+          console.log(`答案是否正確: ${isCorrect}, 題目: ${this.currentQuestion.hiragana}, 食物: ${food.hiragana}`);
+          
+          // 更新分數 (正確答案得分，錯誤答案不得分)
+          if (isCorrect) {
+            this.updateScore(GAME_SETTINGS.POINTS_PER_FOOD);
+            this.showCorrectFeedback();
+          } else {
+            this.showWrongFeedback();
+          }
+          
+          // 移除吃到的食物
+          food.text.destroy();
+          this.foodItems.splice(index, 1);
+          
+          ate = true;
         }
-        
-        // 生成新的食物
+      });
+      
+      // 如果食物數量不足，生成新的食物
+      if (this.foodItems.length < this.foodCount) {
         this.generateFood();
         
-        // 設定新的題目
+        // 吃到食物後設定新的題目
         this.setNewQuestion();
-        
-        // 返回 true 表示吃到了食物 (蛇身會變長，無論回答是否正確)
-        // 如果希望只有正確回答才增加長度，可以改為 return isCorrect;
-        return true;
       }
       
-      // 沒吃到食物
-      return false;
+      // 返回是否吃到食物
+      return ate;
     }
     
     // 新增：顯示正確回答的反饋
@@ -588,49 +590,94 @@ class SnakeScene extends Phaser.Scene {
     
     // 新增：生成食物的方法
     generateFood() {
-      // 如果之前有食物，先移除
-      if (this.food) {
-        this.food.destroy();
+      // 初始化食物群組
+      if (!this.foodGroup) {
+        this.foodGroup = this.add.group();
       }
       
-      // 找一個沒有蛇的位置放食物
-      let validPosition = false;
-      let x, y;
+      // 如果這是第一次生成食物，或者所有食物都被吃掉了
+      const isInitialGeneration = this.foodItems.length === 0;
       
-      while (!validPosition) {
-        // 隨機生成座標
-        x = Phaser.Math.Between(0, this.gridWidth - 1);
-        y = Phaser.Math.Between(0, this.gridHeight - 1);
-        
-        // 確保這個位置沒有蛇的身體
-        validPosition = true;
-        for (const segment of this.snake) {
-          if (segment.x === x && segment.y === y) {
-            validPosition = false;
+      // 如果有題目，確保至少有一個食物匹配當前題目
+      let hasMatchingFood = false;
+      
+      if (this.currentQuestion) {
+        // 檢查現有的食物中是否已有匹配的
+        for (const food of this.foodItems) {
+          if (food.hiragana === this.currentQuestion.hiragana) {
+            hasMatchingFood = true;
             break;
           }
         }
       }
       
-      // 保存食物位置
-      this.foodPosition = { x, y };
-
-      // 隨機選擇一個假名
-      const randomIndex = Phaser.Math.Between(0, HIRAGANA_DATA.A_GYOU.length - 1);
-      const hiraganaObj = HIRAGANA_DATA.A_GYOU[randomIndex];
-      this.currentFoodHiragana = hiraganaObj.hiragana;
-      this.currentFoodRomaji = hiraganaObj.romaji;
-      
-      // 創建食物文字
-      const foodX = x * this.cellSize + this.cellSize / 2;
-      const foodY = y * this.cellSize + this.cellSize / 2;
-      this.food = this.add.text(foodX, foodY, this.currentFoodHiragana, {
-        fontFamily: 'Arial',
-        fontSize: '20px',
-        color: '#ff0000'
-      }).setOrigin(0.5);
-      
-      console.log(`生成食物於: (${x}, ${y}), 假名: ${this.currentFoodHiragana}, 羅馬字: ${this.currentFoodRomaji}`);
+      while (this.foodItems.length < this.foodCount) {
+        // 找一個沒有蛇的位置放食物
+        let validPosition = false;
+        let x, y;
+        
+        while (!validPosition) {
+          // 隨機生成座標
+          x = Phaser.Math.Between(0, this.gridWidth - 1);
+          y = Phaser.Math.Between(0, this.gridHeight - 1);
+          
+          // 確保這個位置沒有蛇的身體
+          validPosition = true;
+          for (const segment of this.snake) {
+            if (segment.x === x && segment.y === y) {
+              validPosition = false;
+              break;
+            }
+          }
+          
+          // 確保這個位置沒有其他食物
+          for (const food of this.foodItems) {
+            if (food.position.x === x && food.position.y === y) {
+              validPosition = false;
+              break;
+            }
+          }
+        }
+        
+        // 保存食物位置
+        const position = { x, y };
+        
+        // 決定要顯示哪個假名
+        let hiraganaObj;
+        
+        // 如果需要匹配題目的食物，並且還沒有生成過匹配的食物
+        if (this.currentQuestion && !hasMatchingFood) {
+          // 使用當前題目的假名
+          hiraganaObj = HIRAGANA_DATA.A_GYOU.find(h => h.hiragana === this.currentQuestion.hiragana);
+          hasMatchingFood = true; // 標記已生成匹配的食物
+        } else {
+          // 隨機選擇一個假名
+          const randomIndex = Phaser.Math.Between(0, HIRAGANA_DATA.A_GYOU.length - 1);
+          hiraganaObj = HIRAGANA_DATA.A_GYOU[randomIndex];
+        }
+        
+        // 創建食物文字
+        const foodX = x * this.cellSize + this.cellSize / 2;
+        const foodY = y * this.cellSize + this.cellSize / 2;
+        const foodText = this.add.text(foodX, foodY, hiraganaObj.hiragana, {
+          fontFamily: 'Arial',
+          fontSize: '20px',
+          color: '#ff0000'
+        }).setOrigin(0.5);
+        
+        // 添加到食物群組
+        this.foodGroup.add(foodText);
+        
+        // 保存食物資訊
+        this.foodItems.push({
+          position,
+          hiragana: hiraganaObj.hiragana,
+          romaji: hiraganaObj.romaji,
+          text: foodText
+        });
+        
+        console.log(`生成食物於: (${x}, ${y}), 假名: ${hiraganaObj.hiragana}, 羅馬字: ${hiraganaObj.romaji}`);
+      }
     }
     
     // 新增：初始化分數顯示
@@ -760,14 +807,17 @@ class SnakeScene extends Phaser.Scene {
     // 新增：設定新的題目
     setNewQuestion() {
       // 如果沒有食物，先生成食物
-      if (!this.currentFoodHiragana) {
+      if (this.foodItems.length === 0) {
         this.generateFood();
       }
       
-      // 使用當前食物作為題目
+      // 隨機選擇一個食物作為題目
+      const randomIndex = Phaser.Math.Between(0, this.foodItems.length - 1);
+      const selectedFood = this.foodItems[randomIndex];
+      
       this.currentQuestion = {
-        hiragana: this.currentFoodHiragana,
-        romaji: this.currentFoodRomaji
+        hiragana: selectedFood.hiragana,
+        romaji: selectedFood.romaji
       };
       
       // 更新題目顯示
