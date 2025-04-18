@@ -67,10 +67,19 @@ class SnakeScene extends Phaser.Scene {
 
       // 遊戲狀態
       this.gameOver = false;
+      this.gameStarted = false;  // 新增：遊戲是否已經開始
       
       // 分數相關
       this.score = 0;
       this.scoreText = null;
+
+      // 重新開始相關
+      this.restartKey = null;  // 儲存重新開始按鍵
+
+      // 遊戲物件容器
+      this.gameObjects = {
+        gameOverGroup: null
+      };
     }
   
     preload() {
@@ -100,7 +109,7 @@ class SnakeScene extends Phaser.Scene {
       });
       
       // 顯示控制提示
-      this.add.text(10, this.cellSize * this.gridHeight - 30, '使用方向鍵控制蛇的移動', {
+      this.controlsText = this.add.text(10, this.cellSize * this.gridHeight - 30, '使用方向鍵開始遊戲', {
         fontFamily: 'Arial',
         fontSize: '16px',
         color: '#cccccc'
@@ -109,13 +118,34 @@ class SnakeScene extends Phaser.Scene {
       // 初始化分數顯示
       this.initScoreDisplay();
       
+      // 顯示開始遊戲提示
+      this.showStartPrompt();
+      
       // 重設移動計時器
       this.moveTime = 0;
+
+      // 初始化遊戲物件群組
+      this.gameObjects.gameOverGroup = this.add.group();
     }
   
     update(time, delta) {
-      // 如果遊戲結束，不執行後續更新邏輯
+      // 如果遊戲結束，等待重新開始指令
       if (this.gameOver) {
+        // 檢查是否按下重新開始按鍵
+        if (this.restartKey && this.restartKey.isDown) {
+          this.restartGame();
+        }
+        return;
+      }
+
+      // 如果遊戲還未開始，檢查是否有按下方向鍵
+      if (!this.gameStarted) {
+        if (this.cursors.up.isDown || this.cursors.down.isDown || 
+            this.cursors.left.isDown || this.cursors.right.isDown) {
+          this.gameStarted = true;
+          this.hideStartPrompt();
+          this.controlsText.setText('使用方向鍵控制蛇的移動');
+        }
         return;
       }
       
@@ -205,9 +235,12 @@ class SnakeScene extends Phaser.Scene {
       });
     }
     
-    // 新增：設定鍵盤控制
+    // 修改：設定鍵盤控制，加入重新開始按鍵
     setupKeyboardControls() {
       this.cursors = this.input.keyboard.createCursorKeys();
+      
+      // 設定空白鍵作為重新開始按鍵
+      this.restartKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     }
     
     // 新增：處理鍵盤輸入並更新方向
@@ -311,8 +344,11 @@ class SnakeScene extends Phaser.Scene {
       return false;
     }
     
-    // 新增：顯示遊戲結束訊息
+    // 修改：顯示遊戲結束訊息
     showGameOver() {
+      // 清空舊的遊戲結束畫面（以防有殘留）
+      this.gameObjects.gameOverGroup.clear(true, true);
+      
       // 添加半透明黑色背景
       const overlay = this.add.rectangle(
         this.gridWidth * this.cellSize / 2,
@@ -322,6 +358,7 @@ class SnakeScene extends Phaser.Scene {
         0x000000,
         0.7
       );
+      this.gameObjects.gameOverGroup.add(overlay);
       
       // 添加遊戲結束文字
       const gameOverText = this.add.text(
@@ -335,6 +372,7 @@ class SnakeScene extends Phaser.Scene {
           fontWeight: 'bold'
         }
       ).setOrigin(0.5);
+      this.gameObjects.gameOverGroup.add(gameOverText);
       
       // 顯示最終分數
       const finalScoreText = this.add.text(
@@ -347,18 +385,75 @@ class SnakeScene extends Phaser.Scene {
           color: '#ffffff'
         }
       ).setOrigin(0.5);
+      this.gameObjects.gameOverGroup.add(finalScoreText);
       
-      // 簡易指示重新開始的文字 (第 8 步會完善此功能)
+      // 提示重新開始的文字
       const restartText = this.add.text(
         this.gridWidth * this.cellSize / 2,
         this.gridHeight * this.cellSize / 2 + 50,
-        '請重新整理頁面以再次遊戲',
+        '按空白鍵重新開始遊戲',
         {
           fontFamily: 'Arial',
           fontSize: '24px',
           color: '#ffffff'
         }
       ).setOrigin(0.5);
+      this.gameObjects.gameOverGroup.add(restartText);
+      
+      // 讓重新開始的文字閃爍，增加視覺提示
+      this.tweens.add({
+        targets: restartText,
+        alpha: 0.5,
+        duration: 500,
+        ease: 'Power1',
+        yoyo: true,
+        repeat: -1
+      });
+    }
+    
+    // 完全重寫：重新開始遊戲方法，徹底解決畫面殘留問題
+    restartGame() {
+      console.log('重新開始遊戲');
+      
+      // 清除遊戲結束相關的物件
+      if (this.gameObjects.gameOverGroup) {
+        this.gameObjects.gameOverGroup.clear(true, true);
+      }
+      
+      // 重置遊戲狀態
+      this.gameOver = false;
+      this.gameStarted = true;
+      this.score = 0;
+      
+      // 重置方向
+      this.direction = DIRECTIONS.RIGHT;
+      this.nextDirection = DIRECTIONS.RIGHT;
+      this.directionChanged = false;
+      
+      // 重設分數顯示
+      if (this.scoreText) {
+        this.scoreText.setText(`分數: ${this.score}`);
+      }
+      
+      // 重置控制提示
+      if (this.controlsText) {
+        this.controlsText.setText('使用方向鍵控制蛇的移動');
+      }
+      
+      // 清除舊的蛇和食物
+      if (this.snakeBodyGroup) {
+        this.snakeBodyGroup.clear(true, true);
+      }
+      if (this.food) {
+        this.food.destroy();
+      }
+      
+      // 重新創建蛇和食物
+      this.createSnake();
+      this.generateFood();
+      
+      // 重設移動計時器
+      this.moveTime = 0;
     }
     
     // 新增：生成食物的方法
@@ -473,6 +568,38 @@ class SnakeScene extends Phaser.Scene {
           pointsText.destroy(); // 動畫結束後移除文字
         }
       });
+    }
+    
+    // 新增：顯示開始遊戲提示
+    showStartPrompt() {
+      this.startPrompt = this.add.text(
+        this.gridWidth * this.cellSize / 2,
+        this.gridHeight * this.cellSize / 2,
+        '按任意方向鍵開始遊戲',
+        {
+          fontFamily: 'Arial',
+          fontSize: '28px',
+          color: '#ffffff'
+        }
+      ).setOrigin(0.5);
+      
+      // 讓提示文字閃爍
+      this.tweens.add({
+        targets: this.startPrompt,
+        alpha: 0.5,
+        duration: 700,
+        ease: 'Power1',
+        yoyo: true,
+        repeat: -1
+      });
+    }
+    
+    // 新增：隱藏開始遊戲提示
+    hideStartPrompt() {
+      if (this.startPrompt) {
+        this.startPrompt.destroy();
+        this.startPrompt = null;
+      }
     }
   }
   
