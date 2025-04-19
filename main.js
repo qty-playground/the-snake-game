@@ -1,7 +1,7 @@
 // 網格系統的全局配置
-const CELL_SIZE = 25;
-const GRID_WIDTH = 30;
-const GRID_HEIGHT = 20;
+const CELL_SIZE = 45;
+const GRID_WIDTH = 18;
+const GRID_HEIGHT = 12;
 
 // 顏色設定
 const COLORS = {
@@ -30,8 +30,8 @@ const OPPOSITE_DIRECTIONS = {
 
 // 遊戲設定
 const GAME_SETTINGS = {
-  MOVE_INTERVAL: 150, // 蛇移動的時間間隔 (毫秒)
-  START_SPEED: 150,   // 初始移動速度 (毫秒)
+  MOVE_INTERVAL: 300, // 蛇移動的時間間隔 (毫秒)
+  START_SPEED: 300,   // 初始移動速度 (毫秒)
   MIN_SPEED: 70,       // 最快速度限制 (毫秒)
   POINTS_PER_FOOD: 1  // 每個食物的分數
 };
@@ -847,6 +847,7 @@ class SnakeScene extends Phaser.Scene {
     height: CELL_SIZE * GRID_HEIGHT,
     backgroundColor: '#000000',
     scene: [SnakeScene],
+    pixelArt: false,
     physics: {
       default: 'arcade',
       arcade: {
